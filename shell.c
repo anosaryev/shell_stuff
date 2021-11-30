@@ -1,18 +1,4 @@
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/wait.h>
-//#include "shell.h"
-
-#define DEBUG 1
-
-struct dirs{
-  char hdir[100];
-  char cdir[100];
-  char ddir[100];
-};
+#include "shell.h"
 
 int strcount(char *str, char *sub){
   int i;
