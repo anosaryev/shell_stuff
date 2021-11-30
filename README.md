@@ -12,7 +12,7 @@ Known Bugs/Issues:
 - cd cannot cd into a parent directory (e.x. `cd ..`)
 - Still no redirection / piping (these features will hopefully come late)
 - Argument parsing is prone to error due to quote functionality.
-  - argray and com have occasionally overlapped (e.x. with DEBUG = 1, `ls; echo hello; echo how are you; ls -l` demonstrates overlap, breaks either way).
+  - argray and com have occasionally overlapped (e.x. with `DEBUG = 1`, `ls; echo hello; echo how are you; ls -l` demonstrates overlap, breaks either way).
   - If input is exceptionally long (i.e. `                                                 ls`, malloc(): corrupted top size may occur.
 
 ```
