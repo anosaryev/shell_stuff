@@ -28,19 +28,22 @@ int sep(char **str, char **src, char delim){
   strcpy(*str, "");
   printf("IN:\tstr:\tsrc:\tdelim:\n\t\"%s\"\t\"%s\"\t\"%c\"\n\n", *str, *src, delim);
 
-  int i, q, n = 0;
+  int i;
+  int q = 0;
+  int n = 0;
   for (i = 0; *src && (*src)[i]; i ++){
     int b = ((*src)[i] == '\\' && ((*src)[i+1] == '"' || (*src)[i+1] == '\'') &&
              (!q || q == (*src)[i+1])); // are we at a valid quote cancellation?
-    if ((*src)[i] == '\'' && q != '"' && !n)
-      q = (q)? 0 : '\'';
-    else if ((*src)[i] == '"' && q != '\'' && !n)
-      q = (q)? 0 : '"';
-    else if (*src[i] == delim && !q){
+    if ((*src)[i] == '\'' || (*src)[i] == '"' && (!q || q == (*src)[i]) && !n){
+      q = (q)? 0 : (*src)[i];
+      if (delim == ';')
+        strncat(*str, *src+i, 1);
+    }
+    else if ((*src)[i] == delim && !q){
       if (strlen(*str))
-        break; // BIG BRAIN IDEA: If we're at a delim but str is empty, don't add it!
-    }else if (!b){
-      //printf("I'm being weird\n");
+        break;
+    }else if (!b || delim == ';'){
+      //printf("%d, %d\n", (*src)[i] == delim, !q);
       strncat(*str, *src+i, 1);
     }
     n = (b)? 1 : 0;
@@ -94,12 +97,15 @@ int exec_all(char *line){
     sep(&arg, &com, ' ');
     for (c = 0; (arg && strlen(arg)) || (com && strlen(com)); c ++){
       printf("Oi! \"%s\"\n", arg);
-      if (!strcmp(arg, "")){
+      /*if (!strcmp(arg, "")){
         sep(&arg, &com, ' ');
         c --;
         continue;
-      }
-      argray[c] = malloc(sizeof(com));
+      */
+      //printf("Ahoy! %ld > %ld\n", sizeof(arg), strlen(arg));
+      //printf("Hopefully %d > %d\n", s, c);
+      argray[c] = malloc(strlen(arg)); // error here
+      //printf("Alright!\n");
       strcpy(argray[c], arg);
       sep(&arg, &com, ' ');
     }
