@@ -4,7 +4,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
-#include "shell.h"
+//#include "shell.h"
+
+#define DEBUG 0
 
 int strcount(char *str, char *sub){
   int i;
@@ -22,18 +24,17 @@ char *null_term(char *str){
   return str;
 }
 
-
-// custom strsep with specific quote feature
 int sep(char **str, char **src, char delim){
   strcpy(*str, "");
-  printf("IN:\tstr:\tsrc:\tdelim:\n\t\"%s\"\t\"%s\"\t\"%c\"\n\n", *str, *src, delim);
+  if (DEBUG)
+    printf("IN:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
 
   int i;
   int q = 0;
   int n = 0;
-  for (i = 0; *src && (*src)[i]; i ++){
+  for (i = 0; *src && strlen(*src) && (*src)[i]; i ++){
     int b = ((*src)[i] == '\\' && ((*src)[i+1] == '"' || (*src)[i+1] == '\'') &&
-             (!q || q == (*src)[i+1])); // are we at a valid quote cancellation?
+             (!q || q == (*src)[i+1])); // valid quote cancellation?
     if ((*src)[i] == '\'' || (*src)[i] == '"' && (!q || q == (*src)[i]) && !n){
       q = (q)? 0 : (*src)[i];
       if (delim == ';')
@@ -43,16 +44,17 @@ int sep(char **str, char **src, char delim){
       if (strlen(*str))
         break;
     }else if (!b || delim == ';'){
-      //printf("%d, %d\n", (*src)[i] == delim, !q);
       strncat(*str, *src+i, 1);
     }
     n = (b)? 1 : 0;
-    printf("MID:\tstr:\tsrc:\tdelim:\n\t\"%s\"\t\"%s\"\t\"%c\"\n\n", *str, *src, delim);
+    if (DEBUG)
+      printf("MID:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   }
   if (*src)
     *src = *src+i+1;
   strcat(*str, "\0");
-  printf("OUT:\tstr:\tsrc:\tdelim:\n\t\"%s\"\t\"%s\"\t\"%c\"\n\n", *str, *src, delim);
+  if (DEBUG)
+    printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
 }
 
@@ -88,34 +90,33 @@ int exec_all(char *line){
   char *com = malloc(sizeof(line));
   int i, r, c;
 
+  if (DEBUG)
+    printf("\n\tcom:\tline:\t';'\n\n");
   sep(&com, &line, ';');
   for (r = 0; (com && strlen(com)) || (line && strlen(line)); r ++){
-    int s = strcount(com, " ");
+    int s = strcount(com, " ")+1;
     char *argray[s];
     for (i = 0; i <= s; i ++)
       argray[i] = 0;
+    if (DEBUG)
+      printf("\n\targ:\tcom:\t' '\n\n");
     sep(&arg, &com, ' ');
     for (c = 0; (arg && strlen(arg)) || (com && strlen(com)); c ++){
-      printf("Oi! \"%s\"\n", arg);
-      /*if (!strcmp(arg, "")){
-        sep(&arg, &com, ' ');
-        c --;
-        continue;
-      */
-      //printf("Ahoy! %ld > %ld\n", sizeof(arg), strlen(arg));
-      //printf("Hopefully %d > %d\n", s, c);
-      argray[c] = malloc(strlen(arg)); // error here
-      //printf("Alright!\n");
+      argray[c] = malloc(sizeof(arg)); // malloc(): corrupted top size if line too long
       strcpy(argray[c], arg);
+      if (DEBUG)
+        printf("\n\targ:\tcom:\t' '\n\n");
       sep(&arg, &com, ' ');
     }
 
-    printf("\nArgs:\n{\n");
-    for (i = 0; argray[i] && strlen(argray[i]); i ++)
+    if (DEBUG){
+      printf("\nArgs:\n{\n");
+      for (i = 0; argray[i] && strlen(argray[i]); i ++)
+        printf("  \"%s\"\n", argray[i]);
+      printf("___\n");
       printf("  \"%s\"\n", argray[i]);
-    printf("___\n");
-    printf("  \"%s\"\n", argray[i]);
-    printf("}\n\n");
+      printf("}\n\n");
+    }
 
     for (i = 0; argray[i] && strlen(argray[i]); i++){}
     argray[i] = 0;
@@ -124,15 +125,13 @@ int exec_all(char *line){
     for (i = 0; argray[i]; i ++)
       free(argray[i]);
 
-    printf("ye\n");
+
+    if (DEBUG)
+      printf("\n\tcom:\tline:\t';'\n\n");
     sep(&com, &line, ';');
   }
-  //printf("arg: \"%s\"\t%p\t%ld\n", arg, &arg, sizeof(arg));
-  //printf("com: \"%s\"\t%p\t%ld\n", com, &com, sizeof(com));
-  //free(arg);
-  //printf("arg done\n");
-  //free(com);
-  //printf("com done\n");
+  if (arg)
+    free(arg);
   return 0;
 }
 
@@ -141,15 +140,6 @@ int main(){
   char line[100];
   fgets(line, 100, stdin);
   printf("\n");
-
-  /*
-  printf("{\n");
-  int i;
-  for (i = 0; i < strlen(line)-1; i ++){
-    printf("  '%c'\n", line[i]);
-  }
-  printf("}\n\n");
-  */
 
   exec_all(null_term(line));
 }
