@@ -6,7 +6,13 @@
 #include <sys/wait.h>
 //#include "shell.h"
 
-#define DEBUG 0
+#define DEBUG 1
+
+struct dirs{
+  char hdir[100];
+  char cdir[100];
+  char ddir[100];
+};
 
 int strcount(char *str, char *sub){
   int i;
@@ -25,7 +31,7 @@ char *null_term(char *str){
 }
 
 int sep(char **str, char **src, char delim){
-  strcpy(*str, "");
+  memset(*str, 0, sizeof(str));
   if (DEBUG)
     printf("IN:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
 
@@ -51,24 +57,34 @@ int sep(char **str, char **src, char delim){
       printf("MID:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   }
   if (*src)
-    *src = *src+i+1;
+   *src = *src+i+1;
   strcat(*str, "\0");
   if (DEBUG)
     printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
 }
 
-int exec_cd(char **line){
+int exec_cd(char *line[], struct dirs *dir){
+  int b = (line[1] == 0)? chdir(dir->hdir) : chdir(line[1]);
+  if (b == -1){
+    printf("Error %d: %s\n", errno, strerror(errno));
+    return -1;
+  }
+  getcwd(dir->cdir, 100);
+  strcpy(dir->ddir, strrchr(dir->cdir, '/')+1);
+
   return 0;
 }
 
-int exec_exit(char **line){
+int exec_exit(char *line[]){
   exit(0);
 }
 
-int exec_func(char *line[]){
-  if (!strcmp(line[0], "cd"))
-    exec_cd(line);
+int exec_func(char *line[], struct dirs *dir){
+  if (!strcmp(line[0], "cd")){
+    exec_cd(line, dir);
+    return 0;
+  }
   else if (!strcmp(line[0], "exit"))
     exec_exit(line);
 
@@ -85,9 +101,10 @@ int exec_func(char *line[]){
 }
 
 
-int exec_all(char *line){
-  char *arg = malloc(sizeof(line));
-  char *com = malloc(sizeof(line));
+int exec_all(char *line, struct dirs *dir){
+  int si = sizeof(line);
+  char *arg = malloc(si);
+  char *com = malloc(si);
   int i, r, c;
 
   if (DEBUG)
@@ -102,8 +119,10 @@ int exec_all(char *line){
       printf("\n\targ:\tcom:\t' '\n\n");
     sep(&arg, &com, ' ');
     for (c = 0; (arg && strlen(arg)) || (com && strlen(com)); c ++){
-      argray[c] = malloc(sizeof(arg)); // malloc(): corrupted top size if line too long
+      argray[c] = malloc(si); // malloc(): corrupted top size if line too long
+      memset(argray[c], 0, si);
       strcpy(argray[c], arg);
+
       if (DEBUG)
         printf("\n\targ:\tcom:\t' '\n\n");
       sep(&arg, &com, ' ');
@@ -121,25 +140,37 @@ int exec_all(char *line){
     for (i = 0; argray[i] && strlen(argray[i]); i++){}
     argray[i] = 0;
     if (argray[0])
-      exec_func(argray);
-    for (i = 0; argray[i]; i ++)
+      exec_func(argray, dir);
+    for (i = 0; argray[i] != 0; i ++)
       free(argray[i]);
 
 
-    if (DEBUG)
-      printf("\n\tcom:\tline:\t';'\n\n");
-    sep(&com, &line, ';');
+    if (strcmp(line, "")){
+      if (DEBUG)
+        printf("\n\tcom:\tline:\t';'\n\n");
+      sep(&com, &line, ';');
+    }
   }
-  if (arg)
+
+  if (arg){
+    com = malloc(si);
     free(arg);
+  }if (com)
+     free(com);
   return 0;
 }
 
 int main(){
-  printf("Enter Command(s):\n");
-  char line[100];
-  fgets(line, 100, stdin);
-  printf("\n");
+  struct dirs dir;
+  getcwd(dir.hdir, 100);
+  getcwd(dir.cdir, 100);
+  strcpy(dir.ddir, strrchr(dir.cdir, '/')+1);
 
-  exec_all(null_term(line));
+  while (1){
+    printf("bish@BOSH:%s¢ ", dir.ddir);
+    char line[100];
+    fgets(line, 100, stdin);
+
+    exec_all(null_term(line), &dir);
+  }
 }
