@@ -8,8 +8,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#define DEBUG 0
-
 struct dirs{
   char hdir[100];
   char cdir[100];

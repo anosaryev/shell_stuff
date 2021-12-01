@@ -1,5 +1,7 @@
 #include "shell.h"
 
+#define DEBUG 0
+
 int strcount(char *str, char *sub){
   int i;
   int c = 0;
@@ -17,7 +19,8 @@ char *null_term(char *str){
 }
 
 int sep(char **str, char **src, char delim){
-  memset(*str, 0, sizeof(str));
+  if (*str && strlen(*str))
+    memset(*str, 0, sizeof(*str));
   if (DEBUG)
     printf("IN:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
 
@@ -42,9 +45,16 @@ int sep(char **str, char **src, char delim){
     if (DEBUG)
       printf("MID:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   }
-  if (*src)
-   *src = *src+i+1;
-  strcat(*str, "\0");
+
+  if (*src){
+    if (i == strlen(*src))
+      *src = "";
+    else
+      *src = *src+i+1;
+    strcat(*str, "\0");
+  }else
+    *str = 0;
+
   if (DEBUG)
     printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
@@ -82,6 +92,7 @@ int exec_func(char *line[], struct dirs *dir){
     }
     exit(0);
   }
+
   waitpid(pid, 0, 0);
   return 0;
 }
@@ -89,6 +100,10 @@ int exec_func(char *line[], struct dirs *dir){
 
 int exec_all(char *line, struct dirs *dir){
   int si = sizeof(line);
+  int el = strcount(line, " ")+1;
+  char argray[el][si];
+  memset(argray, 0, el*si);
+  strcpy(argray[el+1], "\0");
   char *arg = malloc(si);
   char *com = malloc(si);
   int i, r, c;
@@ -97,16 +112,11 @@ int exec_all(char *line, struct dirs *dir){
     printf("\n\tcom:\tline:\t';'\n\n");
   sep(&com, &line, ';');
   for (r = 0; (com && strlen(com)) || (line && strlen(line)); r ++){
-    int s = strcount(com, " ")+1;
-    char *argray[s];
-    for (i = 0; i <= s; i ++)
-      argray[i] = 0;
+    memset(argray, 0, el*(si+1));
     if (DEBUG)
       printf("\n\targ:\tcom:\t' '\n\n");
     sep(&arg, &com, ' ');
     for (c = 0; (arg && strlen(arg)) || (com && strlen(com)); c ++){
-      argray[c] = malloc(si); // malloc(): corrupted top size if line too long
-      memset(argray[c], 0, si);
       strcpy(argray[c], arg);
 
       if (DEBUG)
@@ -114,24 +124,32 @@ int exec_all(char *line, struct dirs *dir){
       sep(&arg, &com, ' ');
     }
 
+    char *cmd[el];
+    for (i = 0; argray[i] && strlen(argray[i]); i ++){
+      cmd[i] = malloc(sizeof(argray));
+      strcpy(cmd[i], argray[i]);
+    }
+    cmd[i] = malloc(1);
+    cmd[i] = 0;
+
     if (DEBUG){
       printf("\nArgs:\n{\n");
-      for (i = 0; argray[i] && strlen(argray[i]); i ++)
-        printf("  \"%s\"\n", argray[i]);
+      for (i = 0; cmd[i] && strcmp(cmd[i], ""); i ++)
+        printf("  \"%s\"\n", cmd[i]);
       printf("___\n");
-      printf("  \"%s\"\n", argray[i]);
+      printf("  \"%s\"\n", cmd[i]);
       printf("}\n\n");
     }
 
-    for (i = 0; argray[i] && strlen(argray[i]); i++){}
-    argray[i] = 0;
-    if (argray[0])
-      exec_func(argray, dir);
-    for (i = 0; argray[i] != 0; i ++)
-      free(argray[i]);
+    if (cmd[0]){
+      exec_func(cmd, dir);
+    }
 
+    for (i = 0; cmd[i] && strcmp(cmd[i], ""); i ++)
+      free(cmd[i]);
 
-    if (strcmp(line, "")){
+    if (line && strlen(line)){
+      com = malloc(si);
       if (DEBUG)
         printf("\n\tcom:\tline:\t';'\n\n");
       sep(&com, &line, ';');
@@ -139,10 +157,9 @@ int exec_all(char *line, struct dirs *dir){
   }
 
   if (arg){
-    com = malloc(si);
     free(arg);
-  }if (com)
-     free(com);
+  if (com)
+    free(com);
   return 0;
 }
 
