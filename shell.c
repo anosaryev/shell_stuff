@@ -61,7 +61,30 @@ int sep(char **str, char **src, char delim){
 }
 
 int exec_cd(char *line[], struct dirs *dir){
-  int b = (line[1] == 0)? chdir(dir->hdir) : chdir(line[1]);
+  int b;
+  if (line[1] == 0){
+    b = chdir(dir->hdir);
+  }else{
+    if (line[1][0] == '/'){
+      b = chdir("/");
+      line[1] = line[1]+1;
+    }else if(!strncmp(line[1], "../", 3) || !strncmp(line[1], "..\0", 3)){
+      char *sp = strrchr(dir->cdir, '/');
+      *sp = '\0';
+      if (dir->cdir == ""){
+        memset(dir->cdir, '\0', 100);
+        strcpy(dir->cdir, "/");
+      }
+      b = chdir(dir->cdir);
+      line[1] = (line[1][2] == '/')? line[1]+3 : line[1]+2;
+    }else if(!strncmp(line[1], "./", 2) || !strncmp(line[1], ".", 2))
+      line[1] = line[1]+2;
+    else{
+      strcat(dir->cdir, "/");
+      strcat(dir->cdir, strsep(&line[1], "/"));
+      b = chdir(dir->cdir);
+    }
+  }
   if (b == -1){
     printf("Error %d: %s\n", errno, strerror(errno));
     return -1;
@@ -69,6 +92,8 @@ int exec_cd(char *line[], struct dirs *dir){
   getcwd(dir->cdir, 100);
   strcpy(dir->ddir, strrchr(dir->cdir, '/')+1);
 
+  if (line[1] && line[1][0])
+    return exec_cd(line, dir);
   return 0;
 }
 
@@ -123,8 +148,10 @@ int exec_all(char *line, struct dirs *dir){
         printf("\n\targ:\tcom:\t' '\n\n");
       sep(&arg, &com, ' ');
     }
-
     char *cmd[el];
+    if (c > 1) // i have absolutely no clue why argray[c] sometimes becomes 2 here.
+      strcpy(argray[c], "");
+
     for (i = 0; argray[i] && strlen(argray[i]); i ++){
       cmd[i] = malloc(sizeof(argray));
       strcpy(cmd[i], argray[i]);
@@ -156,17 +183,18 @@ int exec_all(char *line, struct dirs *dir){
     }
   }
 
-  if (arg){
+  if (arg)
     free(arg);
-  if (com)
-    free(com);
+  //if (com)
+    //free(com);
   return 0;
 }
 
 int main(){
   struct dirs dir;
-  getcwd(dir.hdir, 100);
-  getcwd(dir.cdir, 100);
+  getcwd(dir.hdir, 200);
+  //printf("hdir: \"%s\"\n", dir.hdir);
+  getcwd(dir.cdir, 200);
   strcpy(dir.ddir, strrchr(dir.cdir, '/')+1);
 
   while (1){
