@@ -1,22 +1,26 @@
 # bishBOSH Shell (At the moment, a deeply flawed construction!)
 Successfully Implemented Features:
-- Quotation marks to ignore delimiters (e.x. `cd 'fol der'`)
-- Current directory shown in command line (unfortunately not in reference to home)
-- Semicolon separation is implemented, but imperfect
+- Semicolon separation (with aforementioned quotation mark functionality).
+- Path directory method execution (including cd and exit).
+  - For `cd`, arguments `/`, `.`, `..`, `[child directory]`, simply `cd` and one-argument combinations of these arguments are supported, but see argument length bug.
+
+Bonus Features:
+- Current directory shown in command line (not in reference to ~, unfortunately).
+- Quotation marks to ignore delimiters (e.g. `cd 'fol der'`)
+- Multiple (consecutive) semicolons and spaces are allowed (e.g. `ls ; ;;;  ;  ls   -l` executes `ls;ls -l`).
+  - bash does not have exactly this semicolon functionality, but we thought it would be cool.
 
 Unsuccessfully Attempted Features:
 - Redirection and piping are not implemented (yet).
-- Directory in the command line does not try to stem from home directory.
 
 Known Bugs/Issues:
-- `cd` cannot `cd` into a parent directory (e.x. `cd ..`)
 - Still no redirection / piping (these features will hopefully come late)
-- Argument parsing is prone to error due to quote functionality.
-  - `argray` and `com` have occasionally overlapped (e.x. with `DEBUG = 1`, `ls; echo hello; echo how are you; ls -l` demonstrates overlap, breaks either way).
-  - If input is exceptionally long (i.e. `                                                 ls`, `malloc(): corrupted top size` error may occur.
+- Argument parsing is prone to error due to argument length
+  - Arguments longer than 8 bytes may be cut off (e.g. `echo 'secret: here'` may only perform `echo 'secret: '` because of bugged memory allocation).
+  - If input/argument is exceptionally long (e.g. `                                                 ls`, `malloc(): corrupted top size` error may occur.
 
 ```
-struct dirs{char hdir[100]; char cdir[100]; char ddir[100];};
+struct dirs{char hdir[200]; char cdir[200]; char ddir[200];};
 // Holds information about the home, current and display directory.
 
 int strcount(char *str, char *sub);
