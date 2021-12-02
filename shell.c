@@ -30,7 +30,7 @@ int sep(char **str, char **src, char delim){
   for (i = 0; *src && strlen(*src) && (*src)[i]; i ++){
     int b = ((*src)[i] == '\\' && ((*src)[i+1] == '"' || (*src)[i+1] == '\'') &&
              (!q || q == (*src)[i+1])); // valid quote cancellation?
-    if ((*src)[i] == '\'' || (*src)[i] == '"' && (!q || q == (*src)[i]) && !n){
+    if (((*src)[i] == '\'' || (*src)[i] == '"') && (!q || q == (*src)[i]) && !n){
       q = (q)? 0 : (*src)[i];
       if (delim == ';')
         strncat(*str, *src+i, 1);
@@ -41,20 +41,18 @@ int sep(char **str, char **src, char delim){
     }else if (!b || delim == ';'){
       strncat(*str, *src+i, 1);
     }
-    n = (b)? 1 : 0;
+    n = b;
     if (DEBUG)
       printf("MID:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   }
 
   if (*src){
     if (i == strlen(*src))
-      *src = "";
+      strcpy(*src, "");
     else
-      *src = *src+i+1;
-    strcat(*str, "\0");
+      strcpy(*src, *src+i+1);
   }else
-    *str = 0;
-
+    *str = 0; // future me: test if this literally ever happens
   if (DEBUG)
     printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
@@ -67,21 +65,24 @@ int exec_cd(char *line[], struct dirs *dir){
   }else{
     if (line[1][0] == '/'){
       b = chdir("/");
-      line[1] = line[1]+1;
+      strcpy(line[1], line[1]+1);
     }else if(!strncmp(line[1], "../", 3) || !strncmp(line[1], "..\0", 3)){
-      char *sp = strrchr(dir->cdir, '/');
-      *sp = '\0';
-      if (dir->cdir == ""){
-        memset(dir->cdir, '\0', 100);
-        strcpy(dir->cdir, "/");
+      if (strcmp(dir->cdir, "/")){
+        char *sp = strrchr(dir->cdir, '/');
+        *sp = '\0';
+        if (dir->cdir == ""){
+          memset(dir->cdir, '\0', 100);
+          strcpy(dir->cdir, "/");
+        }
+        b = chdir(dir->cdir);
       }
-      b = chdir(dir->cdir);
-      line[1] = (line[1][2] == '/')? line[1]+3 : line[1]+2;
+      strcpy(line[1], (line[1][2] == '/')? line[1]+3 : line[1]+2);
     }else if(!strncmp(line[1], "./", 2) || !strncmp(line[1], ".", 2))
-      line[1] = line[1]+2;
+      strcpy(line[1], line[1]+2);
     else{
       strcat(dir->cdir, "/");
-      strcat(dir->cdir, strsep(&line[1], "/"));
+      strncat(dir->cdir, line[1], 1 + (strchr(line[1], '/'))? strchr(line[1], '/') - line[1] : strlen(line[1]));
+      strcpy(line[1], (strchr(line[1], '/'))? strchr(line[1], '/')+1 : "");
       b = chdir(dir->cdir);
     }
   }
@@ -91,6 +92,9 @@ int exec_cd(char *line[], struct dirs *dir){
   }
   getcwd(dir->cdir, 100);
   strcpy(dir->ddir, strrchr(dir->cdir, '/')+1);
+
+  if (DEBUG)
+    printf("line[1] = \"%s\" at %p; cdir = \"%s\"\n", line[1], line[1], dir->cdir);
 
   if (line[1] && line[1][0])
     return exec_cd(line, dir);
@@ -103,8 +107,9 @@ int exec_exit(char *line[]){
 
 int exec_func(char *line[], struct dirs *dir){
   if (!strcmp(line[0], "cd")){
-    exec_cd(line, dir);
-    return 0;
+    if (DEBUG)
+      printf("line[1] = \"%s\" from %p to %p; cdir = \"%s\"\n", line[1], line[1], line[1]+strlen(line[1]), dir->cdir);
+    return exec_cd(line, dir);
   }
   else if (!strcmp(line[0], "exit"))
     exec_exit(line);
@@ -124,8 +129,9 @@ int exec_func(char *line[], struct dirs *dir){
 
 
 int exec_all(char *line, struct dirs *dir){
-  int si = sizeof(line);
+  int si = strlen(line);
   int el = strcount(line, " ")+1;
+  char *cmd[el];
   char argray[el][si];
   memset(argray, 0, el*si);
   strcpy(argray[el+1], "\0");
@@ -148,12 +154,8 @@ int exec_all(char *line, struct dirs *dir){
         printf("\n\targ:\tcom:\t' '\n\n");
       sep(&arg, &com, ' ');
     }
-    char *cmd[el];
-    if (c > 1) // i have absolutely no clue why argray[c] sometimes becomes 2 here.
-      strcpy(argray[c], "");
-
     for (i = 0; argray[i] && strlen(argray[i]); i ++){
-      cmd[i] = malloc(sizeof(argray));
+      cmd[i] = malloc(sizeof(argray[i]));
       strcpy(cmd[i], argray[i]);
     }
     cmd[i] = malloc(1);
@@ -172,11 +174,10 @@ int exec_all(char *line, struct dirs *dir){
       exec_func(cmd, dir);
     }
 
-    for (i = 0; cmd[i] && strcmp(cmd[i], ""); i ++)
+    for (i = 0; cmd && cmd[i] && strcmp(cmd[i], ""); i ++)
       free(cmd[i]);
 
     if (line && strlen(line)){
-      com = malloc(si);
       if (DEBUG)
         printf("\n\tcom:\tline:\t';'\n\n");
       sep(&com, &line, ';');
@@ -185,15 +186,16 @@ int exec_all(char *line, struct dirs *dir){
 
   if (arg)
     free(arg);
-  //if (com)
-    //free(com);
+  if (com){
+    free(com);
+  }
   return 0;
 }
 
 int main(){
   struct dirs dir;
   getcwd(dir.hdir, 200);
-  //printf("hdir: \"%s\"\n", dir.hdir);
+  printf("hdir: \"%s\"\n", dir.hdir);
   getcwd(dir.cdir, 200);
   strcpy(dir.ddir, strrchr(dir.cdir, '/')+1);
 
@@ -201,7 +203,6 @@ int main(){
     printf("bish@BOSH:%s¢ ", dir.ddir);
     char line[100];
     fgets(line, 100, stdin);
-
     exec_all(null_term(line), &dir);
   }
 }
