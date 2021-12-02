@@ -203,6 +203,7 @@ int main(){
     printf("bish@BOSH:%s¢ ", dir.ddir);
     char line[100];
     fgets(line, 100, stdin);
-    exec_all(null_term(line), &dir);
+    if(strcmp(line, "\n"))
+      exec_all(null_term(line), &dir);
   }
 }
