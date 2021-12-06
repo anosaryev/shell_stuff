@@ -28,14 +28,14 @@ int sep(char **str, char **src, char delim){
   int q = 0;
   int n = 0;
   for (i = 0; *src && strlen(*src) && (*src)[i]; i ++){
-    int b = ((*src)[i] == '\\' && ((*src)[i+1] == '"' || (*src)[i+1] == '\'') &&
-             (!q || q == (*src)[i+1])); // valid quote cancellation?
+    int b = ((*src)[i] == '\\' && (!q || q == (*src)[i+1]) &&
+	     ((*src)[i+1] == '"' || (*src)[i+1] == '\'')); // valid cancellation?
     if (((*src)[i] == '\'' || (*src)[i] == '"') && (!q || q == (*src)[i]) && !n){
-      q = (q)? 0 : (*src)[i];
+      q = (q)? 0 : (*src)[i]; // valid quote initiation or termination?
       if (delim == ';')
         strncat(*str, *src+i, 1);
     }
-    else if ((*src)[i] == delim && !q){
+    else if ((*src)[i] == delim && !q){ //@ delim?
       if (strlen(*str))
         break;
     }else if (!b || delim == ';'){
@@ -46,13 +46,10 @@ int sep(char **str, char **src, char delim){
       printf("MID:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   }
 
-  if (*src){
-    if (i == strlen(*src))
-      strcpy(*src, "");
-    else
-      strcpy(*src, *src+i+1);
-  }else
-    *str = 0; // future me: test if this literally ever happens
+  if (i == strlen(*src))
+    strcpy(*src, "");
+  else
+    strcpy(*src, *src+i);
   if (DEBUG)
     printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
@@ -68,7 +65,8 @@ int exec_cd(char *line[], struct dirs *dir){
       strcpy(line[1], line[1]+1);
     }else if(!strncmp(line[1], "../", 3) || !strncmp(line[1], "..\0", 3)){
       if (strcmp(dir->cdir, "/")){
-        char *sp = strrchr(dir->cdir, '/');
+
+	char *sp = strrchr(dir->cdir, '/');
         *sp = '\0';
         if (dir->cdir == ""){
           memset(dir->cdir, '\0', 100);
@@ -103,6 +101,53 @@ int exec_cd(char *line[], struct dirs *dir){
 
 int exec_exit(char *line[]){
   exit(0);
+}
+
+int exec_redir(char *line[], struct dirs *dir){
+  int i;
+  for (i = 0; line[i]; i ++){
+    if (!strcmp(line[i], "<")){
+
+      int stdin_dup = dup(STDIN_FILENO);
+      int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      dup2(fd1, STDIN_FILENO);
+      char *op = line[i];
+      line[i] = 0;
+      exec_func(line, dir);
+      line[i] = op;
+      dup2(stdin_dup, STDIN_FILENO);
+      return 0;
+      
+    }else if (!strcmp(line[i], ">")){
+      
+      int stdout_dup = dup(STDOUT_FILENO);
+      int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      dup2(fd1, STDOUT_FILENO);
+      char *op = line[i];
+      line[i] = 0;
+      exec_func(line, dir);
+      line[i] = op;
+      dup2(stdout_dup, STDOUT_FILENO);
+      return 0;
+      
+    }else if (!strcmp(line[i], ">>")){
+      
+      int stdout_dup = dup(STDOUT_FILENO);
+      int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_APPEND, 0644);
+      dup2(fd1, STDOUT_FILENO);
+      char *op = line[i];
+      line[i] = 0;
+      exec_func(line, dir);
+      line[i] = op;
+      dup2(stdout_dup, STDOUT_FILENO);
+      return 0;
+      
+    }else if (!strcmp(line[i], "|")){
+      return 0;
+    }
+  }
+  exec_func(line, dir);
+  return 0;
 }
 
 int exec_func(char *line[], struct dirs *dir){
@@ -171,7 +216,7 @@ int exec_all(char *line, struct dirs *dir){
     }
 
     if (cmd[0]){
-      exec_func(cmd, dir);
+      exec_redir(cmd, dir);
     }
 
     for (i = 0; cmd && cmd[i] && strcmp(cmd[i], ""); i ++)
