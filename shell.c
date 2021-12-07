@@ -1,6 +1,6 @@
 #include "shell.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 int strcount(char *str, char *sub){
   int i;
@@ -16,6 +16,25 @@ char *null_term(char *str){
   if (str[strlen(str)-1] == '\n')
     str[strlen(str)-1] = 0;
   return str;
+}
+
+char *combine_args(char *line[], int delim_i){
+  int i;
+  int si = -1;
+  for (i = 0; line[i]; i ++){
+    si += 1 + strlen(line[i]);
+  }
+  if (si == -1)
+    si = 0;
+  char *command = malloc(si);
+  for (i = 0; line[i]; i ++){
+    if (i != delim_i)
+      strcat(command, line[i]);
+    else
+      strcat(command, "\0");
+    strcat(command, " ");
+  }
+  return command;
 }
 
 int sep(char **str, char **src, char delim){
@@ -143,6 +162,14 @@ int exec_redir(char *line[], struct dirs *dir){
       return 0;
       
     }else if (!strcmp(line[i], "|")){
+      char *from = combine_args(line, i);
+      char *to = from + i + 1;
+      FILE *read = popen(from, "r");
+      FILE *write = popen(to, "w");
+      char temp[strlen(from)];
+      dup2(fileno(read), fileno(write));
+      to = 0;
+      free(from);
       return 0;
     }
   }
