@@ -19,6 +19,8 @@ int strcount(char *str, char *sub);
 
 char *null_term(char *str);
 
+char *combine_args(char *line[], int delim_i);
+
 int sep(char **str, char **src, char delim);
 
 int exec_cd(char *line[], struct dirs *dir);
