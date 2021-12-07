@@ -14,7 +14,8 @@ Unsuccessfully Attempted Features:
 - Redirection and piping are not implemented (yet).
 
 Known Bugs/Issues:
-- Still no redirection / piping (these features will hopefully come late)
+- Still no piping.
+- Strange bug with name inconsistency. For example, running `rm hey` will actually execute `rm yey`.
 
 ```
 struct dirs{char hdir[200]; char cdir[200]; char ddir[200];};
