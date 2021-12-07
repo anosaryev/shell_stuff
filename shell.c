@@ -67,8 +67,11 @@ int sep(char **str, char **src, char delim){
 
   if (i == strlen(*src))
     strcpy(*src, "");
-  else
-    strcpy(*src, *src+i);
+  else{
+    char temp[strlen(*src+1)];
+    strcpy(temp, *src+i);
+    strcpy(*src, temp);
+  }
   if (DEBUG)
     printf("OUT:\t\"%s\"\t\"%s\"\t'%c'\n", *str, *src, delim);
   return 0;
@@ -136,9 +139,9 @@ int exec_redir(char *line[], struct dirs *dir){
       line[i] = op;
       dup2(stdin_dup, STDIN_FILENO);
       return 0;
-      
+
     }else if (!strcmp(line[i], ">")){
-      
+
       int stdout_dup = dup(STDOUT_FILENO);
       int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0644);
       dup2(fd1, STDOUT_FILENO);
@@ -148,9 +151,9 @@ int exec_redir(char *line[], struct dirs *dir){
       line[i] = op;
       dup2(stdout_dup, STDOUT_FILENO);
       return 0;
-      
+
     }else if (!strcmp(line[i], ">>")){
-      
+
       int stdout_dup = dup(STDOUT_FILENO);
       int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_APPEND, 0644);
       dup2(fd1, STDOUT_FILENO);
@@ -160,7 +163,7 @@ int exec_redir(char *line[], struct dirs *dir){
       line[i] = op;
       dup2(stdout_dup, STDOUT_FILENO);
       return 0;
-      
+
     }else if (!strcmp(line[i], "|")){
       char *from = combine_args(line, i);
       char *to = from + i + 1;
