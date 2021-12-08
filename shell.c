@@ -1,6 +1,6 @@
 #include "shell.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 int strcount(char *str, char *sub){
   int i;
@@ -19,21 +19,24 @@ char *null_term(char *str){
 }
 
 char *combine_args(char *line[], int delim_i){
-  int i;
-  int si = -1;
+  int i = 0;
+  int si = 0;
+  int delim_ic;
   for (i = 0; line[i]; i ++){
     si += 1 + strlen(line[i]);
   }
-  if (si == -1)
-    si = 0;
+  if (!si)
+    si = 1;
   char *command = malloc(si);
+  strcpy(command, "");
   for (i = 0; line[i]; i ++){
-    if (i != delim_i)
-      strcat(command, line[i]);
-    else
-      strcat(command, "\0");
-    strcat(command, " ");
+    if (i == delim_i)
+      delim_ic = strlen(command);
+    strcat(command, line[i]);
+    if (line[i+1])
+      strcat(command, " ");
   }
+  *(command + delim_ic) = 0;
   return command;
 }
 
@@ -165,14 +168,23 @@ int exec_redir(char *line[], struct dirs *dir){
       return 0;
 
     }else if (!strcmp(line[i], "|")){
-      char *from = combine_args(line, i);
-      char *to = from + i + 1;
-      FILE *read = popen(from, "r");
-      FILE *write = popen(to, "w");
-      char temp[strlen(from)];
-      dup2(fileno(read), fileno(write));
-      to = 0;
-      free(from);
+      char *cmd = combine_args(line, i);
+      if (DEBUG)
+	printf("from:\t[%s]\nto:\t[%s]\n", cmd, cmd + strlen(cmd) + 1);
+      FILE *from = popen(cmd, "r");
+      FILE *to = popen(cmd + strlen(cmd) + 1, "w");
+      
+      while (!feof(from)){
+	char t = fgetc(from);
+	fputc(t, to);
+      }
+      
+      //fputs(fgets(temp, len, read), write);
+      //printf("temp = [%s]\n", temp);
+      //dup2(fileno(read), fileno(write)); // herein lies the issue
+      pclose(from);
+      pclose(to);
+      free(cmd);
       return 0;
     }
   }
