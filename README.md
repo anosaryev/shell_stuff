@@ -1,4 +1,6 @@
-# bishBOSH Shell (Late Date of Completion: 7 December 2021)
+# bishBOSH Shell
+(Late Date of Completion: 7 December 2021)
+
 Successfully Implemented Features:
 - Semicolon separation (with aforementioned quotation mark functionality).
 - Path directory method execution (including cd and exit).
@@ -17,7 +19,7 @@ Unsuccessfully Attempted Features:
 
 Limitations:
 - Current path has a maximum length of 100 chars.
-- `>`, `>>`, `<` and `|` require blankspaces before and after them to function.
+- Redirection/piping requires at least one `' '` before and after the `>`, `>>`, `<` or `|` operator(s) for them to function.
 
 Known Bugs/Issues:
 - For some reason, performing `ls | wc` outputs a character count 1 greater than bash (e.g. bishBOSH `ls | wc` could output `      6       6      49` when bash `ls | wc` would output `      6       6      48`) 
