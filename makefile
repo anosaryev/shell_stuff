@@ -10,5 +10,5 @@ run:
 	./bish
 
 clean:
-	rm -rf bish
-	rm -rf *.o
+	rm -f bish
+	rm -f *.o
