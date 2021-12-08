@@ -134,7 +134,7 @@ int exec_redir(char *line[], struct dirs *dir){
     if (!strcmp(line[i], "<")){
 
       int stdin_dup = dup(STDIN_FILENO);
-      int fd1 = open(line[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      int fd1 = open(line[i+1], O_RDONLY, 0644);
       dup2(fd1, STDIN_FILENO);
       char *op = line[i];
       line[i] = 0;
