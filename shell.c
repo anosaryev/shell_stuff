@@ -179,9 +179,6 @@ int exec_redir(char *line[], struct dirs *dir){
 	fputc(t, to);
       }
       
-      //fputs(fgets(temp, len, read), write);
-      //printf("temp = [%s]\n", temp);
-      //dup2(fileno(read), fileno(write)); // herein lies the issue
       pclose(from);
       pclose(to);
       free(cmd);
